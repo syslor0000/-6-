@@ -1,0 +1,45 @@
+name: Deploy Change House site
+
+on:
+  push:
+    branches:
+      - MASTER
+    paths:
+      - 'changehouse-site/archive/**'
+      - '.github/workflows/changehouse-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: changehouse-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Build static artifact
+        run: |
+          mkdir -p _site/changehouse
+          cat changehouse-site/archive/site-*.b64 > /tmp/changehouse-site.b64
+          base64 --decode /tmp/changehouse-site.b64 > /tmp/changehouse-site.zip
+          echo "886f2aa644198c0335fd1c1a89db4d0784c94c3faa41fe4e04f2d8dc0cc2eb2c  /tmp/changehouse-site.zip" | sha256sum -c -
+          unzip -q /tmp/changehouse-site.zip -d _site/changehouse
+          cp INDEXl.HTML _site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
